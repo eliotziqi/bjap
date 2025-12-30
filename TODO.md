@@ -7,7 +7,7 @@
 ### Practice 模式 UI/UX 改进
 - [x] P0: 交互锁机制（防止重复点击）
 - [x] P0-1: 按钮布局重构（两排设计）
-- [ ] P0-2: Dealer/Player 区域间距优化
+- [x] P0-2: Dealer/Player 区域间距优化
 - [ ] P1-1: 按钮点击动画过渡
 - [ ] P1-2: 收牌动画（模拟 Dealer 收牌）
 - [ ] P2-1: 连胜 Streak 显示

@@ -24,6 +24,23 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
   const [animationStage, setAnimationStage] = useState<'idle' | 'busy'>('idle');
   const isBusy = animationStage !== 'idle';
 
+  // 格式化点数显示（软/硬主态规则）
+  const formatHandValue = (cards: CardType[]): string => {
+    const value = calculateHandValue(cards);
+    const hasAce = cards.some(c => c.rank === Rank.Ace);
+    
+    if (!hasAce) return `${value}`;
+    
+    // 计算硬点数（所有 A 算 1）
+    const hardValue = cards.reduce((sum, c) => sum + (c.rank === Rank.Ace ? 1 : c.value), 0);
+    
+    // 如果软点数和硬点数相同（爆牌或只能算硬），只显示一个
+    if (value === hardValue) return `${value}`;
+    
+    // 主态规则：软点数在前（更重要），硬点数在后
+    return `${value}/${hardValue}`;
+  };
+
   const dealNewHand = () => {
     let d = deck;
     if (d.length < 15) {
@@ -75,13 +92,6 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
 
   return (
     <div className="flex flex-col items-center justify-between min-h-[60vh]">
-      <div className="w-full text-center mt-4">
-        <h3 className="text-gray-400 text-sm tracking-widest uppercase">Dealer Upcard</h3>
-        <div className="flex justify-center mt-2">
-           <Card card={dealerUpCard} />
-        </div>
-      </div>
-
       {feedback && (
           <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm pointer-events-none`}>
               <div className={`text-6xl font-black ${feedback.correct ? 'text-green-500' : 'text-red-500'} drop-shadow-lg transform scale-110`}>
@@ -91,10 +101,26 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
           </div>
       )}
 
-      <div className="w-full text-center mb-8">
-        <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-2">Your Hand ({calculateHandValue(playerHand.cards)})</h3>
-        <div className="flex justify-center -space-x-12">
+      {/* Dealer & Player 左右分布区域 */}
+      <div className="w-full flex gap-8 px-8 py-8">
+        {/* Dealer 区域 - 左侧 */}
+        <div className="flex-1 text-center">
+          {/* Title Row - 统一高度确保对齐 */}
+          <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">Dealer Upcard ({formatHandValue([dealerUpCard])})</h3>
+          {/* Card Stage - 顶部对齐 */}
+          <div className="flex justify-center">
+            <Card card={dealerUpCard} />
+          </div>
+        </div>
+
+        {/* Player 区域 - 右侧 */}
+        <div className="flex-1 text-center">
+          {/* Title Row - 统一高度确保对齐 */}
+          <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">Your Hand ({formatHandValue(playerHand.cards)})</h3>
+          {/* Card Stage - 顶部对齐 */}
+          <div className="flex justify-center -space-x-12">
             {playerHand.cards.map((c, i) => <Card key={i} card={c} />)}
+          </div>
         </div>
       </div>
 
