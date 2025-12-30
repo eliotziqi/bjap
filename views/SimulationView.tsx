@@ -323,11 +323,11 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
             )}
           </h3>
           {/* Card Stage - 顶部对齐 */}
-          <div className="flex justify-center -space-x-4 min-h-[56px]">
+          <div className="flex justify-center -space-x-10 min-h-[72px]">
             {dealerHand.cards.length > 0 ? (
-              dealerHand.cards.map((c, i) => <Card key={i} card={c} mini />)
+              dealerHand.cards.map((c, i) => <Card key={i} card={c} />)
             ) : (
-              <div className="h-14 w-10 border-2 border-dashed border-gray-700 rounded bg-gray-900/50"/>
+              <div className="h-16 w-12 border-2 border-dashed border-gray-700 rounded bg-gray-900/50"/>
             )}
           </div>
         </div>
