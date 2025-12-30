@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameRules, Action, Hand, Card as CardType, SimState, Rank } from '../types';
 import { createDeck, shuffleDeck, createHand, calculateHandValue, playDealerTurn } from '../services/blackjackLogic';
+import { updateSimMaxMultiplier } from '../services/statsService';
 import { getBasicStrategyAction } from '../services/strategyEngine';
 import Card from '../components/Card';
 import ActionControls from '../components/ActionControls';
@@ -16,6 +17,8 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   // Sim State
   const [gameState, setGameState] = useState<SimState>(SimState.Setup);
   const [bankroll, setBankroll] = useState(100);
+  const [initialBankroll, setInitialBankroll] = useState<number | null>(null);
+  const [peakBankroll, setPeakBankroll] = useState<number | null>(null);
   const [currentBet, setCurrentBet] = useState(25);
   const [deck, setDeck] = useState<CardType[]>([]);
   const [roundStartBankroll, setRoundStartBankroll] = useState<number | null>(null);
@@ -31,8 +34,65 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   const [hasUsedHints, setHasUsedHints] = useState(false);
   const [hintAction, setHintAction] = useState<Action | null>(null);
 
+  // Session persistence
+  const SIM_STATE_KEY = 'bj_sim_state_v1';
+
+  // 载入本地保存的牌桌状态
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SIM_STATE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed.bankroll) setBankroll(parsed.bankroll);
+      if (parsed.initialBankroll !== undefined) setInitialBankroll(parsed.initialBankroll);
+      if (parsed.peakBankroll !== undefined) setPeakBankroll(parsed.peakBankroll);
+      if (parsed.currentBet) setCurrentBet(parsed.currentBet);
+      if (parsed.deck) setDeck(parsed.deck);
+      if (parsed.playerHands) setPlayerHands(parsed.playerHands);
+      if (parsed.activeHandIndex !== undefined) setActiveHandIndex(parsed.activeHandIndex);
+      if (parsed.dealerHand) setDealerHand(parsed.dealerHand);
+      if (parsed.gameState) setGameState(parsed.gameState);
+      if (parsed.hintsEnabled !== undefined) setHintsEnabled(parsed.hintsEnabled);
+      if (parsed.hasUsedHints !== undefined) setHasUsedHints(parsed.hasUsedHints);
+      if (parsed.roundStartBankroll !== undefined) setRoundStartBankroll(parsed.roundStartBankroll);
+      if (parsed.roundResult) setRoundResult(parsed.roundResult);
+    } catch (e) {
+      // ignore bad data
+    }
+  }, []);
+
+  // 保存牌桌状态
+  useEffect(() => {
+    const payload = {
+      bankroll,
+      initialBankroll,
+      peakBankroll,
+      currentBet,
+      deck,
+      playerHands,
+      activeHandIndex,
+      dealerHand,
+      gameState,
+      hintsEnabled,
+      hasUsedHints,
+      roundStartBankroll,
+      roundResult,
+    };
+    localStorage.setItem(SIM_STATE_KEY, JSON.stringify(payload));
+  }, [bankroll, initialBankroll, peakBankroll, currentBet, deck, playerHands, activeHandIndex, dealerHand, gameState, hintsEnabled, hasUsedHints, roundStartBankroll, roundResult]);
+
+  // 更新峰值
+  useEffect(() => {
+    setPeakBankroll(prev => {
+      if (prev === null) return bankroll;
+      return bankroll > prev ? bankroll : prev;
+    });
+  }, [bankroll]);
+
   // Initial Setup
   const startGame = () => {
+    setInitialBankroll(bankroll);
+    setPeakBankroll(bankroll);
     setGameState(SimState.Betting);
     setDeck(shuffleDeck(createDeck(rules.deckCount)));
   };
@@ -252,7 +312,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
     
     setBankroll(b => {
       const newBank = b + payout;
-      const start = roundStartBankroll ?? b;
+      const start = roundStartBankroll ?? (initialBankroll ?? b);
       setRoundResult({ delta: newBank - start, total: newBank });
       return newBank;
     });
@@ -263,6 +323,31 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       setGameState(SimState.Betting);
     }, 2500);
   };
+
+    const handleLeaveTable = () => {
+      const base = initialBankroll ?? bankroll;
+      if (base > 0) {
+        const totalValue = bankroll;
+        const multiplier = totalValue / base;
+        updateSimMaxMultiplier(multiplier);
+      }
+
+      // 重置到 Setup，但保留当前bankroll作为默认值
+      setGameState(SimState.Setup);
+      setDeck([]);
+      setPlayerHands([]);
+      setDealerHand(createHand());
+      setActiveHandIndex(0);
+      setRoundStartBankroll(null);
+      setRoundResult(null);
+      setHintAction(null);
+      setHasUsedHints(false);
+      setHintsEnabled(false);
+      setInitialBankroll(null);
+      setPeakBankroll(null);
+      // 清理本地存档
+      localStorage.removeItem(SIM_STATE_KEY);
+    };
 
   // Hint Logic
   useEffect(() => {
@@ -521,7 +606,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
                 </button>
               ))}
             </div>
-            
+
             {/* Deal Button */}
             <button 
               onClick={placeBet} 
@@ -533,6 +618,14 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
               }`}
             >
               {bankroll < currentBet ? 'Insufficient Funds' : 'DEAL CARDS'}
+            </button>
+
+            {/* Leave Table */}
+            <button
+              onClick={handleLeaveTable}
+              className="w-full max-w-md px-8 py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-200 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-600 hover:to-red-700 text-white border-2 border-red-500 hover:shadow-red-500/50"
+            >
+              Leave Table (Reset to Setup)
             </button>
           </div>
         )}

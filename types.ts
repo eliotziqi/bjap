@@ -70,6 +70,7 @@ export interface PlayerStats {
   streak: number;
   maxStreak: number; // 历史最高连胜
   streakMilestones: number[]; // 已达成的里程碑 [10, 25, 50, 100, ...]
+  simMaxMultiplier?: number | null; // Simulation 最大乘数（相对初始资金）
 }
 
 export enum ViewMode {

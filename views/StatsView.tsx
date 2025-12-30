@@ -37,9 +37,22 @@ const StatsView: React.FC<StatsViewProps> = ({ stats, onReset }) => {
     return percent === -1 ? 'N/A' : `${percent}%`;
   };
 
+  const getColorByMultiplier = (val?: number | null): string => {
+    if (val === null || val === undefined) return 'text-gray-400';
+    if (val < 1) return 'text-red-400';
+    if (val < 1.5) return 'text-yellow-400';
+    return 'text-green-400';
+  };
+
   const handleReset = () => {
     clearStats();
     onReset();
+  };
+
+  const renderSimMax = () => {
+    const val = stats.simMaxMultiplier;
+    if (val === null || val === undefined) return 'N/A';
+    return `${val.toFixed(2)}x`;
   };
 
   const hardAccuracy = calcAccuracy('hard');
@@ -54,7 +67,7 @@ const StatsView: React.FC<StatsViewProps> = ({ stats, onReset }) => {
       </div>
       
       <div className="bg-gray-800 p-6 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Performance</h3>
+        <h3 className="text-lg font-bold mb-4">Practice Performance</h3>
         <div className="grid grid-cols-3 gap-6">
           <div>
             <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Hard</div>
@@ -78,7 +91,7 @@ const StatsView: React.FC<StatsViewProps> = ({ stats, onReset }) => {
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Streak</h3>
+        <h3 className="text-lg font-bold mb-4">Practice Streaks</h3>
         <div className="grid grid-cols-2 gap-6">
           <div>
             <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Current</div>
@@ -105,6 +118,18 @@ const StatsView: React.FC<StatsViewProps> = ({ stats, onReset }) => {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="bg-gray-800 p-6 rounded-lg">
+        <h3 className="text-lg font-bold mb-4">Simulation</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Max Multiplier</div>
+            <div className={`text-3xl font-mono font-bold ${getColorByMultiplier(stats.simMaxMultiplier)}`}>
+              {renderSimMax()}
+            </div>
+          </div>
+        </div>
       </div>
 
       <button onClick={handleReset} className="w-full py-3 text-red-400 border border-red-900 rounded hover:bg-red-900/20">

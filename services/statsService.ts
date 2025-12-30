@@ -10,6 +10,7 @@ const initialStats: PlayerStats = {
   streak: 0,
   maxStreak: 0,
   streakMilestones: [],
+  simMaxMultiplier: null,
 };
 
 export const loadStats = (): PlayerStats => {
@@ -28,6 +29,7 @@ export const loadStats = (): PlayerStats => {
       streak: parsed.streak || 0,
       maxStreak: parsed.maxStreak || 0,
       streakMilestones: parsed.streakMilestones || [],
+      simMaxMultiplier: parsed.simMaxMultiplier ?? null,
     };
   } catch (e) {
     return initialStats;
@@ -78,3 +80,14 @@ export const clearStats = () => {
     localStorage.removeItem(STATS_KEY);
     return initialStats;
 }
+
+// 更新 Simulation 最大乘数（仅在 leave table 时调用）
+export const updateSimMaxMultiplier = (multiplier: number) => {
+  if (Number.isNaN(multiplier)) return loadStats();
+  const stats = loadStats();
+  if (stats.simMaxMultiplier === null || stats.simMaxMultiplier === undefined || multiplier > stats.simMaxMultiplier) {
+    stats.simMaxMultiplier = multiplier;
+    saveStats(stats);
+  }
+  return stats;
+};
