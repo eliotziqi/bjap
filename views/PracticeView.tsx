@@ -26,6 +26,17 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
   
   // ⌨️ 键盘触发的按钮视觉反馈
   const [pressedAction, setPressedAction] = useState<Action | null>(null);
+  
+  // 📊 本地追踪 stats（用于实时更新 Streak）
+  const [localStats, setLocalStats] = useState(stats);
+  
+  // ✨ Streak 动效状态：检测里程碑/新纪录
+  const [streakAnimationTrigger, setStreakAnimationTrigger] = useState<'milestone' | 'newRecord' | null>(null);
+
+  // 🔄 当外部 stats 重置时同步更新（修复 Reset 按钮后的状态不一致）
+  useEffect(() => {
+    setLocalStats(stats);
+  }, [stats]);
 
   // 🎮 动态计算允许的 action（根据实际手牌和规则）
   const allowedActions = React.useMemo(() => {
@@ -52,6 +63,11 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
   const formatHandValue = (cards: CardType[]): string => {
     const value = calculateHandValue(cards);
     const hasAce = cards.some(c => c.rank === Rank.Ace);
+    
+    // 🎰 Blackjack 特殊显示
+    if (cards.length === 2 && value === 21) {
+      return 'Blackjack!';
+    }
     
     if (!hasAce) return `${value}`;
     
@@ -137,7 +153,22 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
 
     const key = getStrategyKey(playerHand, dealerUpCard);
     const category = getHandType(playerHand.cards) === 'PAIR' ? 'pairs' : (getHandType(playerHand.cards) === 'SOFT' ? 'soft' : 'hard');
-    recordPracticeResult(key, category.toLowerCase() as any, isCorrect);
+    const updatedStats = recordPracticeResult(key, category.toLowerCase() as any, isCorrect);
+    
+    // 📊 更新本地 stats（触发 Streak 实时更新）
+    setLocalStats(updatedStats);
+    
+    // ✨ 检测里程碑或新纪录
+    if (isCorrect) {
+      const milestones = [10, 25, 50, 100, 150, 200, 250, 300];
+      if (milestones.includes(updatedStats.streak)) {
+        setStreakAnimationTrigger('milestone');
+        setTimeout(() => setStreakAnimationTrigger(null), 1500);
+      } else if (updatedStats.streak > 0 && updatedStats.streak === updatedStats.maxStreak && updatedStats.streak > 1) {
+        setStreakAnimationTrigger('newRecord');
+        setTimeout(() => setStreakAnimationTrigger(null), 1500);
+      }
+    }
 
     setTimeout(() => {
         dealNewHand();
@@ -149,6 +180,21 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
       {/* 键盘快捷键提示 */}
       <div className="w-full text-center pt-2 pb-4 text-gray-400 text-sm">
         Use keyboard shortcuts: Hit(H), Stand(S), Double(D), Split(P), Surrender(R).
+      </div>
+
+      {/* 连胜计数 */}
+      <div className="w-full text-center mb-4">
+        <div className="text-sm text-gray-400 uppercase tracking-widest">Streak</div>
+        <div className={`text-3xl font-bold font-mono transition-all duration-300
+          ${streakAnimationTrigger === 'milestone' ? 'text-yellow-400 scale-110 animate-pulse' : ''}
+          ${streakAnimationTrigger === 'newRecord' ? 'text-orange-400 scale-110 animate-pulse drop-shadow-lg' : ''}
+          ${streakAnimationTrigger === null && localStats.streak > 0 ? 'text-green-400' : ''}
+          ${localStats.streak === 0 ? 'text-gray-400' : ''}
+        `}>
+          {localStats.streak}
+          {streakAnimationTrigger === 'milestone' && <span className="text-lg ml-2">🎯</span>}
+          {streakAnimationTrigger === 'newRecord' && <span className="text-lg ml-2">🏆</span>}
+        </div>
       </div>
 
       {feedback && (

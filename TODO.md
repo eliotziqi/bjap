@@ -1,6 +1,6 @@
 # Blackjack Trainer Pro - TODO
 
-> 最后更新：2025-12-29
+> 最后更新：2025-12-30
 
 ## 🔥 进行中 (In Progress)
 
@@ -8,21 +8,22 @@
 - [x] P0: 交互锁机制（防止重复点击）
 - [x] P0-1: 按钮布局重构（两排设计）
 - [x] P0-2: Dealer/Player 区域间距优化
-- [ ] P1-1: 按钮点击动画过渡
+- [x] P1-1: 按钮点击动画过渡（hover/active/focus 动效）
 - [ ] P1-2: 收牌动画（模拟 Dealer 收牌）
-- [ ] P2-1: 连胜 Streak 显示
+- [x] P2-1: 连胜 Streak 显示
+- [ ] **P2-1.5: Streak 动效与统计增强** 🆕
+  - [x] Streak 增加时：+1 数字浮出动画（translate-y + fade-out）
+  - [x] Streak 归零时：闪烁/shake 动画警告
+  - [x] 达到里程碑（10/25/50/100）：特殊背景闪光或彩虹效果
+  - [x] 超过历史最佳：新纪录标签 + 金色特效
+  - [x] 统计数据：添加 `maxStreak`（历史最高连胜）到 PlayerStats
+  - [x] 统计数据：添加 `streakMilestones` 到 PlayerStats（记录达成过的里程碑）
 - [ ] P2-2: 手牌统计快速预览
 - [ ] P2-3: 错误时显示 EV 对比
 
 ---
 
-## ⚠️ 重构后发现的问题
-### 功能完整性
-- [ ] 🟢 低：StatsView 未导入 `clearStats` 的实际使用
-  - **位置**: `views/StatsView.tsx`
-  - **现象**: 导入了 `clearStats` 但 `onReset` 由父组件 `App.tsx` 处理
-  - **影响**: 无，功能正常但导入冗余
-  - **建议**: 清理未使用的导入以保持代码整洁
+## ⚠️ 已知问题与改进计划
 
 ### 代码规范
 - [ ] 🟢 低：缺少 TypeScript 严格模式检查
@@ -71,11 +72,10 @@
 ## 🐛 Bug 修复
 
 - [ ] 🔴 高：Split 后的手牌计算错误
-- [ ] 🟡 中：Stats 页面 "Reset Statistics" 按钮点击无响应
+- [x] 🟡 中：Stats 页面 "Reset Statistics" 按钮点击无响应
   - **位置**: `views/StatsView.tsx`
-  - **现象**: 按钮点击后没有清空统计数据
-  - **影响**: 用户无法重置训练记录
-  - **临时方案**: 手动清除 localStorage
+  - **现象**: ~~按钮点击后没有清空统计数据~~ **已修复**
+  - **解决**: 添加 `handleReset` 函数，调用 `clearStats()` 后触发 `onReset()`
 - [ ] 🟡 中：Dealer A 时 Surrender 逻辑不准确
 - [ ] 🟢 低：统计页面的百分比显示精度问题
 
@@ -112,8 +112,19 @@
 - [x] 代码重构
 
 ### v1.1 - Practice 模式优化 (当前)
-- [ ] UI/UX 改进（7/8 完成）
-- [ ] 交互动画
+- [x] UI/UX 改进（7/8 完成）
+  - [x] P0: 交互锁机制
+  - [x] P0-1: 两排按钮布局
+  - [x] P0-2: 区域间距优化
+  - [x] P1-1: 按钮动效（hover/active/focus）
+  - [x] P2-1: 连胜 Streak 显示（含实时更新）
+  - [x] P2-1.5: Streak 动效与统计增强（里程碑/新纪录提示）
+  - [ ] P1-2: 收牌动画
+  - [ ] P2-2: 手牌统计快速预览
+  - [ ] P2-3: 错误时显示 EV 对比
+- [x] 键盘快捷键支持（H/S/D/P/R）
+- [x] 按钮禁用状态（Split/Surrender 规则检查）
+- [x] Stats Reset 功能修复
 - [ ] 反馈增强
 
 ### v1.2 - 性能与体验

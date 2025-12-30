@@ -1,6 +1,5 @@
 import React from 'react';
-import StatCard from '../components/ui/StatCard';
-import { clearStats, saveStats } from '../services/statsService';
+import { clearStats, loadStats } from '../services/statsService';
 
 interface StatsViewProps {
   stats: any;
@@ -18,22 +17,91 @@ const StatsView: React.FC<StatsViewProps> = ({ stats, onReset }) => {
     return total === 0 ? 0 : Math.round((correct / total) * 100);
   };
 
+  const getColorByPercent = (percent: number): string => {
+    if (percent === 0) return 'text-gray-400';
+    if (percent >= 90) return 'text-green-400';
+    if (percent >= 70) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getColorByStreak = (streak: number): string => {
+    if (streak === 0) return 'text-gray-400';
+    if (streak >= 10) return 'text-green-400';
+    return 'text-yellow-400';
+  };
+
+  const formatAccuracy = (percent: number): string => {
+    return percent === 0 ? 'N/A' : `${percent}%`;
+  };
+
+  const handleReset = () => {
+    clearStats();
+    onReset();
+  };
+
+  const hardAccuracy = calcAccuracy('hard');
+  const softAccuracy = calcAccuracy('soft');
+  const pairsAccuracy = calcAccuracy('pairs');
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-4">Performance</h2>
+      <h2 className="text-2xl font-bold mb-4">Statistics</h2>
       
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard label="Hard" percent={calcAccuracy('hard')} />
-        <StatCard label="Soft" percent={calcAccuracy('soft')} />
-        <StatCard label="Pairs" percent={calcAccuracy('pairs')} />
+      <div className="bg-gray-800 p-6 rounded-lg">
+        <h3 className="text-lg font-bold mb-4">Performance</h3>
+        <div className="grid grid-cols-3 gap-6">
+          <div>
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Hard</div>
+            <div className={`text-3xl font-mono font-bold ${getColorByPercent(hardAccuracy)}`}>
+              {formatAccuracy(hardAccuracy)}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Soft</div>
+            <div className={`text-3xl font-mono font-bold ${getColorByPercent(softAccuracy)}`}>
+              {formatAccuracy(softAccuracy)}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Pairs</div>
+            <div className={`text-3xl font-mono font-bold ${getColorByPercent(pairsAccuracy)}`}>
+              {formatAccuracy(pairsAccuracy)}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Current Streak</h3>
-        <div className="text-4xl text-green-400 font-mono text-center">{stats.streak}</div>
+        <h3 className="text-lg font-bold mb-4">Streak</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Current</div>
+            <div className={`text-3xl font-mono font-bold ${getColorByStreak(stats.streak)}`}>
+              {stats.streak}
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Personal Best</div>
+            <div className={`text-3xl font-mono font-bold ${getColorByStreak(stats.maxStreak)}`}>
+              {stats.maxStreak}
+            </div>
+          </div>
+        </div>
+        {stats.streakMilestones.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-700">
+            <div className="text-sm text-gray-400 uppercase tracking-widest mb-2">Milestones Reached</div>
+            <div className="flex flex-wrap gap-2">
+              {stats.streakMilestones.map(milestone => (
+                <span key={milestone} className="bg-yellow-900/30 text-yellow-300 px-2 py-1 rounded text-sm font-mono">
+                  {milestone}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <button onClick={onReset} className="w-full py-3 text-red-400 border border-red-900 rounded hover:bg-red-900/20">
+      <button onClick={handleReset} className="w-full py-3 text-red-400 border border-red-900 rounded hover:bg-red-900/20">
         Reset Statistics
       </button>
     </div>

@@ -8,12 +8,27 @@ const initialStats: PlayerStats = {
   pairs: {},
   heatmap: {},
   streak: 0,
+  maxStreak: 0,
+  streakMilestones: [],
 };
 
 export const loadStats = (): PlayerStats => {
   try {
     const data = localStorage.getItem(STATS_KEY);
-    return data ? JSON.parse(data) : initialStats;
+    if (!data) return initialStats;
+    
+    const parsed = JSON.parse(data);
+    
+    // 数据迁移：确保新字段存在
+    return {
+      hard: parsed.hard || {},
+      soft: parsed.soft || {},
+      pairs: parsed.pairs || {},
+      heatmap: parsed.heatmap || {},
+      streak: parsed.streak || 0,
+      maxStreak: parsed.maxStreak || 0,
+      streakMilestones: parsed.streakMilestones || [],
+    };
   } catch (e) {
     return initialStats;
   }
@@ -38,6 +53,18 @@ export const recordPracticeResult = (
 
   // Update Streak
   stats.streak = isCorrect ? stats.streak + 1 : 0;
+  
+  // Update maxStreak
+  if (stats.streak > stats.maxStreak) {
+    stats.maxStreak = stats.streak;
+  }
+  
+  // Check for milestones (10, 25, 50, 100, 150, ...)
+  const milestones = [10, 25, 50, 100, 150, 200, 250, 300];
+  if (milestones.includes(stats.streak) && !stats.streakMilestones.includes(stats.streak)) {
+    stats.streakMilestones.push(stats.streak);
+    stats.streakMilestones.sort((a, b) => a - b);
+  }
 
   // Update Heatmap
   const today = new Date().toISOString().split('T')[0];
