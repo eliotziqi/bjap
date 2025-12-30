@@ -23,6 +23,7 @@ const DEFAULT_RULES: GameRules = {
   doubleAfterSplit: true,
   surrender: 'late',
   blackjackPayout: 1.5,
+  simMinBet: 10,
 };
 
 // --- App Component ---

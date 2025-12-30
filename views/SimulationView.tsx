@@ -35,7 +35,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   const [deck, setDeck] = useState<CardType[]>([]);
   const [roundStartBankroll, setRoundStartBankroll] = useState<number | null>(null);
   const [roundResult, setRoundResult] = useState<{ delta: number; total: number } | null>(null);
-  const [chipCounts, setChipCounts] = useState<Record<number, number>>({ 0.5: 0, 1: 0, 5: 0, 25: 1, 100: 0 });
+  const [chipCounts, setChipCounts] = useState<Record<number, number>>({ 0.5: 0, 1: 0, 5: 2, 25: 0, 100: 0 });
   
   // Hands
   const [playerHands, setPlayerHands] = useState<Hand[]>([]);
@@ -58,8 +58,11 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
     { value: 100, label: '$100', color: 'bg-gradient-to-br from-black to-slate-900 text-yellow-200' },
   ]), []);
 
+  const minSimBet = rules.simMinBet || 10;
+
   const currentBet = useMemo(() => {
-    const sum = Object.entries(chipCounts).reduce((acc, [denom, count]) => acc + Number(denom) * count, 0);
+    const entries = Object.entries(chipCounts) as Array<[string, number]>;
+    const sum = entries.reduce((acc, [denom, count]) => acc + parseFloat(denom) * count, 0);
     return Math.round(sum * 100) / 100; // cents precision
   }, [chipCounts]);
 
@@ -78,7 +81,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
 
   const setPreset = (target: number, cap?: number) => {
     const ceiling = cap ?? bankroll;
-    const amount = Math.max(0.5, Math.min(target, ceiling));
+    const amount = Math.max(minSimBet, Math.min(target, ceiling));
     const next: Record<number, number> = { 0.5: 0, 1: 0, 5: 0, 25: 0, 100: 0 };
     let remaining = Math.round(amount * 100); // cents
     const order = [10000, 2500, 500, 100, 50];
@@ -177,7 +180,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   };
 
   const placeBet = () => {
-    if (bankroll < currentBet || currentBet <= 0) return;
+    if (bankroll < currentBet || currentBet < minSimBet) return;
     const preBetBankroll = bankroll;
     const allIn = preBetBankroll > 0 && currentBet >= preBetBankroll && preBetBankroll >= ALL_IN_THRESHOLD;
     roundFlagsRef.current = { hadBlackjack: false, didAllIn: allIn, splitUsed: false, das: false };
@@ -686,8 +689,11 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       )}
 
       {/* Blackjack Payout Info */}
-      <div className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">
+      <div className="text-gray-400 text-sm tracking-widest uppercase mb-1 h-6 flex items-center justify-center">
         Blackjack pays {rules.blackjackPayout === 1.5 ? '3:2' : '6:5'}
+      </div>
+      <div className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">
+        Simulation min bet: ${minSimBet}
       </div>
 
       {/* Dealer & Player 左右分布区域 */}
@@ -820,25 +826,25 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
               </div>
               <div className="mt-4 flex flex-wrap gap-2 justify-center text-xs text-gray-300">
                 <button
-                  onClick={() => setPreset(0.5)}
+                  onClick={() => setPreset(minSimBet)}
                   className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
                 >
-                  Min ($0.50)
+                  Min (${minSimBet})
                 </button>
                 <button
-                  onClick={() => setPreset(Math.max(0.5, currentBet / 2))}
+                  onClick={() => setPreset(Math.max(minSimBet, currentBet / 2))}
                   className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
                 >
                   Half
                 </button>
                 <button
-                  onClick={() => setPreset(Math.max(0.5, currentBet * 2))}
+                  onClick={() => setPreset(Math.max(minSimBet, currentBet * 2))}
                   className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
                 >
                   Double
                 </button>
                 <button
-                  onClick={() => setPreset(Math.max(0.5, bankroll / 2))}
+                  onClick={() => setPreset(Math.max(minSimBet, bankroll / 2))}
                   className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
                 >
                   Half Bankroll
@@ -861,14 +867,14 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
             {/* Deal Button */}
             <button 
               onClick={placeBet} 
-              disabled={bankroll < currentBet || currentBet <= 0}
+              disabled={bankroll < currentBet || currentBet < minSimBet}
               className={`w-full max-w-md px-8 py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-200 ${
-                bankroll < currentBet || currentBet <= 0
+                bankroll < currentBet || currentBet < minSimBet
                   ? 'bg-gray-700 cursor-not-allowed text-gray-500 border-2 border-gray-600' 
                   : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white border-2 border-green-500 hover:shadow-green-500/50'
               }`}
             >
-              {bankroll < currentBet || currentBet <= 0 ? 'Adjust Bet' : 'DEAL CARDS'}
+              {bankroll < currentBet || currentBet < minSimBet ? `Min $${minSimBet}` : 'DEAL CARDS'}
             </button>
 
             {/* Leave Table */}

@@ -50,6 +50,7 @@ export interface GameRules {
   doubleAfterSplit: boolean;
   surrender: 'none' | 'early' | 'late';
   blackjackPayout: 1.5 | 1.2; // 3:2 vs 6:5
+  simMinBet: 5 | 10 | 15 | 25 | 100;
 }
 
 // Stats Structure

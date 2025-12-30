@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { GameRules, SimState, ViewMode } from '../types';
+import { GameRules, SimState } from '../types';
 import RuleToggle from '../components/ui/RuleToggle';
 import RuleItemWithInfo from '../components/ui/RuleItemWithInfo';
 import RuleExplanation from '../components/ui/RuleExplanation';
@@ -17,6 +17,7 @@ const RulesView: React.FC<RulesViewProps> = ({ rules, setRules }) => {
     doubleAfterSplit: true,
     surrender: 'late',
     blackjackPayout: 1.5,
+    simMinBet: 10,
   };
 
   const SIM_STATE_KEY = 'bj_sim_state_v1';
@@ -66,6 +67,7 @@ const RulesView: React.FC<RulesViewProps> = ({ rules, setRules }) => {
     setRules({
       ...DEFAULT_RULES,
       blackjackPayout: simLocked ? rules.blackjackPayout : DEFAULT_RULES.blackjackPayout,
+      simMinBet: simLocked ? rules.simMinBet : DEFAULT_RULES.simMinBet,
     });
   };
   return (
@@ -75,6 +77,7 @@ const RulesView: React.FC<RulesViewProps> = ({ rules, setRules }) => {
         <p className="text-gray-400 text-sm md:text-base"></p>
       </div>
       
+      {/* Table Rules */}
       <div className="bg-gray-800 p-6 rounded-lg space-y-4 shadow-lg border border-gray-700">
         <RuleItemWithInfo
           label="Dealer Hits Soft 17"
@@ -142,37 +145,6 @@ Surrender is most useful when you have a weak hand against a strong dealer card.
         </RuleItemWithInfo>
 
         <RuleItemWithInfo
-          label="Blackjack Payout"
-          description="Payout when you hit a natural blackjack. 3:2 is player-favorable; 6:5 increases house edge."
-          onInfoClick={() => showExplanation(
-            'Blackjack Payout',
-            `How a natural blackjack (Ace + 10-value) pays out:
-
-3:2 (1.5x): Standard, more favorable to players. A $20 bet pays $30 profit.
-6:5 (1.2x): Worse for players. A $20 bet pays $24 profit.
-
-Choosing 6:5 increases the house edge. Stick with 3:2 when possible.`
-          )}
-        >
-          {simLocked && (
-            <div className="mt-2 inline-flex items-center gap-2 text-xs text-amber-300 bg-amber-900/20 border border-amber-700/60 rounded pl-2 pr-0.5 py-1">
-              <span role="img" aria-label="lock">🔒</span>
-              <span>Simulation in progress, leave table to change</span>
-            </div>
-          )}
-          <select
-            className="bg-gray-700 text-white rounded p-2"
-            value={rules.blackjackPayout}
-            onChange={(e) => setRules({...rules, blackjackPayout: parseFloat(e.target.value) as 1.5 | 1.2})}
-            disabled={simLocked}
-          >
-            <option value={1.5}>3:2 (1.5x)</option>
-            <option value={1.2}>6:5 (1.2x)</option>
-          </select>
-
-        </RuleItemWithInfo>
-
-        <RuleItemWithInfo
           label="Decks"
           description="Number of card decks in the shoe. More decks reduce player advantage."
           onInfoClick={() => showExplanation(
@@ -203,9 +175,67 @@ More decks mean the house has a greater advantage. The basic strategy may need s
         </RuleItemWithInfo>
       </div>
 
-      <button 
-        onClick={handleResetToDefault} 
-        className="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition duration-150"
+      {/* Simulation Rules */}
+      <div className={`p-0 rounded-lg shadow-lg border ${simLocked ? 'border-amber-500 bg-amber-900/10' : 'border-gray-700 bg-gray-800'}`}>
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-700">
+          <div className="text-sm font-semibold text-gray-200">Simulation Rules</div>
+          {simLocked && (
+            <div className="flex items-center gap-2 text-xs text-amber-900 bg-amber-300 px-2 py-1 rounded font-semibold">
+              <span role="img" aria-label="lock">🔒</span>
+              <span>Simulation in progress, leave table to change</span>
+            </div>
+          )}
+        </div>
+        <div className={`space-y-4 p-6 ${simLocked ? 'opacity-80' : ''}`}>
+          <RuleItemWithInfo
+            label="Blackjack Payout"
+            description="Payout when you hit a natural blackjack. 3:2 is player-favorable; 6:5 increases house edge."
+            onInfoClick={() => showExplanation(
+              'Blackjack Payout',
+              `How a natural blackjack (Ace + 10-value) pays out:
+
+  3:2 (1.5x): Standard, more favorable to players. A $20 bet pays $30 profit.
+  6:5 (1.2x): Worse for players. A $20 bet pays $24 profit.
+
+  Choosing 6:5 increases the house edge. Stick with 3:2 when possible.`
+            )}
+          >
+            <select
+              className="bg-gray-700 text-white rounded p-2"
+              value={rules.blackjackPayout}
+              onChange={(e) => setRules({...rules, blackjackPayout: parseFloat(e.target.value) as 1.5 | 1.2})}
+              disabled={simLocked}
+            >
+              <option value={1.5}>3:2 (1.5x)</option>
+              <option value={1.2}>6:5 (1.2x)</option>
+            </select>
+          </RuleItemWithInfo>
+
+          <RuleItemWithInfo
+            label="Simulation Min Bet"
+            description="Minimum table bet used in Simulation presets"
+            onInfoClick={() => showExplanation(
+              'Simulation Min Bet',
+              `Sets the minimum chip preset for Simulation betting. Choices: $5, $10, $15, $25, $100. The Min preset in Simulation will use this value.`
+            )}
+          >
+            <select
+              className="bg-gray-700 text-white rounded p-2"
+              value={rules.simMinBet}
+              onChange={(e) => setRules({...rules, simMinBet: parseInt(e.target.value, 10) as GameRules['simMinBet']})}
+              disabled={simLocked}
+            >
+              {[5,10,15,25,100].map(v => (
+                <option key={v} value={v}>${v}</option>
+              ))}
+            </select>
+          </RuleItemWithInfo>
+        </div>
+      </div>
+
+      <button
+        className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 rounded-lg border border-gray-600 transition"
+        onClick={handleResetToDefault}
       >
         Reset to Default
       </button>
