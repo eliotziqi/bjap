@@ -126,7 +126,8 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
       };
       
       const action = keyMap[key];
-      if (action) {
+      // 🔒 检查按键是否被允许（与按钮禁用状态同步）
+      if (action && allowedActions.includes(action)) {
         e.preventDefault();
         
         // 触发视觉反馈
@@ -139,7 +140,7 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isBusy, playerHand, dealerUpCard]);
+  }, [isBusy, playerHand, dealerUpCard, allowedActions]);
 
   const handleAction = (action: Action) => {
     // 🚪 防止重复触发
@@ -166,8 +167,19 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
     
     // ✨ 检测里程碑或新纪录
     if (isCorrect) {
-      const milestones = [10, 25, 50, 100, 150, 200, 250, 300];
-      if (milestones.includes(updatedStats.streak)) {
+        const milestones = [
+        // 基础：每5个
+        5, 10, 15, 20, 25, 30,
+        // 进阶：每10个
+        40, 50, 60, 70, 80, 90, 100,
+        // 高阶：每25个
+        125, 150, 175, 200, 250,
+        // 传奇：每50个
+        300, 350, 400, 450, 500,
+        // 超凡：每100个
+        600, 700, 800, 900, 1000
+        ];
+        if (milestones.includes(updatedStats.streak)) {
         setStreakAnimationTrigger('milestone');
         setTimeout(() => setStreakAnimationTrigger(null), 1500);
       } else if (updatedStats.streak > 0 && updatedStats.streak === updatedStats.maxStreak && updatedStats.streak > 1) {
