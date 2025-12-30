@@ -46,6 +46,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   const [hintsEnabled, setHintsEnabled] = useState(false);
   const [hasUsedHints, setHasUsedHints] = useState(false);
   const [hintAction, setHintAction] = useState<Action | null>(null);
+  const [pressedAction, setPressedAction] = useState<Action | null>(null);
 
   // Session persistence
   const SIM_STATE_KEY = 'bj_sim_state_v1';
@@ -97,6 +98,40 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   };
 
   const clearChips = () => setChipCounts({ 0.5: 0, 1: 0, 5: 0, 25: 0, 100: 0 });
+
+  const activeHand = playerHands[activeHandIndex];
+  const canPlay = gameState === SimState.PlayerTurn;
+
+  // 动态计算允许的操作（根据当前活动手牌）
+  const getAllowedActions = (): Action[] => {
+    if (!activeHand) return [];
+
+    // Blackjack 只能 Stand
+    const isBlackjack = activeHand.cards.length === 2 && calculateHandValue(activeHand.cards) === 21;
+    if (isBlackjack) return [Action.Stand];
+
+    const actions: Action[] = [Action.Hit, Action.Stand];
+
+    // Double: 只在前两张牌时允许，且需要足够资金
+    if (activeHand.cards.length === 2 && bankroll >= activeHand.bet) {
+      actions.push(Action.Double);
+    }
+
+    // Split: 只在前两张牌且相同rank时允许，且需要足够资金
+    const canSplit = activeHand.cards.length === 2 &&
+                     activeHand.cards[0].rank === activeHand.cards[1].rank &&
+                     bankroll >= activeHand.bet;
+    if (canSplit) {
+      actions.push(Action.Split);
+    }
+
+    // Surrender: 只在前两张牌时允许，且规则允许；拆牌后不允许再投降
+    if (activeHand.cards.length === 2 && rules.surrender !== 'none' && !roundFlagsRef.current.splitUsed) {
+      actions.push(Action.Surrender);
+    }
+
+    return actions;
+  };
 
   // 载入本地保存的牌桌状态
   useEffect(() => {
@@ -497,6 +532,34 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
     pendingSimStatsRef.current = null;
   }, [roundResult, hasUsedHints]);
 
+  // Keyboard shortcuts: mirror Practice view
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (gameState !== SimState.PlayerTurn) return;
+      const key = e.key.toUpperCase();
+      const keyMap: Record<string, Action> = {
+        H: Action.Hit,
+        S: Action.Stand,
+        D: Action.Double,
+        P: Action.Split,
+        R: Action.Surrender,
+      };
+      const action = keyMap[key];
+      if (!action) return;
+
+      const allowed = getAllowedActions();
+      if (!allowed.includes(action)) return;
+
+      e.preventDefault();
+      setPressedAction(action);
+      setTimeout(() => setPressedAction(null), 150);
+      handleAction(action);
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState, playerHands, activeHandIndex, bankroll, handleAction]);
+
   if (gameState === SimState.Setup) {
     return (
       <div className="relative max-w-md mx-auto space-y-6 pt-6">
@@ -610,40 +673,6 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       </div>
     );
   }
-
-  const activeHand = playerHands[activeHandIndex];
-  const canPlay = gameState === SimState.PlayerTurn;
-
-  // 动态计算允许的操作（根据当前活动手牌）
-  const getAllowedActions = (): Action[] => {
-    if (!activeHand) return [];
-
-    // Blackjack 只能 Stand
-    const isBlackjack = activeHand.cards.length === 2 && calculateHandValue(activeHand.cards) === 21;
-    if (isBlackjack) return [Action.Stand];
-
-    const actions: Action[] = [Action.Hit, Action.Stand];
-
-    // Double: 只在前两张牌时允许，且需要足够资金
-    if (activeHand.cards.length === 2 && bankroll >= activeHand.bet) {
-      actions.push(Action.Double);
-    }
-
-    // Split: 只在前两张牌且相同rank时允许，且需要足够资金
-    const canSplit = activeHand.cards.length === 2 && 
-                     activeHand.cards[0].rank === activeHand.cards[1].rank &&
-                     bankroll >= activeHand.bet;
-    if (canSplit) {
-      actions.push(Action.Split);
-    }
-
-    // Surrender: 只在前两张牌时允许，且规则允许；拆牌后不允许再投降
-    if (activeHand.cards.length === 2 && rules.surrender !== 'none' && !roundFlagsRef.current.splitUsed) {
-      actions.push(Action.Surrender);
-    }
-
-    return actions;
-  };
 
   return (
     <div className="flex flex-col h-full relative">
@@ -891,7 +920,8 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
           <div className="max-w-2xl mx-auto">
             <ActionControls 
               onAction={handleAction} 
-              allowedActions={getAllowedActions()} 
+              allowedActions={getAllowedActions()}
+              pressedAction={pressedAction}
             />
           </div>
         )}
