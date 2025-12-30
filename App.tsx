@@ -85,7 +85,7 @@ const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-grow p-4 pb-24 max-w-5xl mx-auto w-full">
         {view === ViewMode.Rules && (
-          <RulesView rules={rules} setRules={setRules} onStart={() => navigate(ViewMode.Practice)} />
+          <RulesView rules={rules} setRules={setRules} />
         )}
         {view === ViewMode.Strategy && (
           <StrategyView rules={rules} navigate={navigate} />

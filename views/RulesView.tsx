@@ -5,10 +5,21 @@ import RuleToggle from '../components/ui/RuleToggle';
 interface RulesViewProps {
   rules: GameRules;
   setRules: (rules: GameRules) => void;
-  onStart: () => void;
 }
 
-const RulesView: React.FC<RulesViewProps> = ({ rules, setRules, onStart }) => {
+const RulesView: React.FC<RulesViewProps> = ({ rules, setRules }) => {
+  // 默认规则常量
+  const DEFAULT_RULES: GameRules = {
+    deckCount: 6,
+    dealerHitSoft17: true,
+    doubleAfterSplit: true,
+    surrender: 'late',
+    blackjackPayout: 1.5,
+  };
+
+  const handleResetToDefault = () => {
+    setRules(DEFAULT_RULES);
+  };
   return (
     <div className="space-y-6 max-w-md mx-auto">
       <h2 className="text-2xl font-bold text-white mb-4">Table Rules</h2>
@@ -51,8 +62,11 @@ const RulesView: React.FC<RulesViewProps> = ({ rules, setRules, onStart }) => {
         </div>
       </div>
 
-      <button onClick={onStart} className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-lg shadow-lg text-lg transition">
-        Start Training
+      <button 
+        onClick={handleResetToDefault} 
+        className="w-full bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 rounded-lg shadow-lg transition duration-150"
+      >
+        Reset to Default
       </button>
     </div>
   );

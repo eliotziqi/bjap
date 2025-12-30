@@ -35,8 +35,8 @@
 ## 📌 待办 (Backlog)
 
 ### 高优先级 (P0)
-- [ ] Rules 页面优化
-  - [ ] Start Training 按钮旁增加 "Reset to Default" 按钮（恢复赌场最常见规则）
+- [x] Rules 页面优化
+  - [x] "Reset to Default" 按钮（恢复赌场最常见规则）
   - [ ] 规则设置项后增加问号图标，点击弹框解释规则影响
 
 - [ ] 修复 Split 按钮不可用时的禁用状态
