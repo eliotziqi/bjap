@@ -114,12 +114,13 @@ const ScenarioView: React.FC<ScenarioViewProps> = ({ globalRules, navigate }) =>
   const topEv = evResults.length > 0 ? evResults[0] : null;
 
   return (
-    <div className="flex flex-col items-center h-full space-y-6 mt-6 overflow-y-auto pb-20">
-      <div className="text-center">
+    <div className="flex flex-col items-center h-full overflow-y-auto pb-20">
+      <div className="mb-6 text-center w-full pt-6">
         <h2 className="text-3xl font-bold text-green-400 mb-2">Scenario Analysis</h2>
+        {/* <p className="text-gray-400 text-sm md:text-base"></p> */}
       </div>
       
-      <div className="flex gap-12 md:gap-16 w-full px-8 py-6">
+      <div className="flex gap-12 md:gap-16 w-full px-8 py-6 space-y-6">
         <div className="flex-1 text-center">
           <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">Dealer Upcard ({scenario.dVal === 11 ? 'A' : scenario.dVal})</h3>
           <div className="flex justify-center">

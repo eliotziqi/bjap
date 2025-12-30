@@ -48,7 +48,10 @@ const StatsView: React.FC<StatsViewProps> = ({ stats, onReset }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-4">Statistics</h2>
+      <div className="mb-6 text-center pt-6">
+        <h2 className="text-3xl font-bold text-green-400 mb-2">Statistics</h2>
+        <p className="text-gray-400 text-sm md:text-base"></p>
+      </div>
       
       <div className="bg-gray-800 p-6 rounded-lg">
         <h3 className="text-lg font-bold mb-4">Performance</h3>

@@ -195,9 +195,11 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
 
   return (
     <div className="flex flex-col items-center justify-between min-h-[60vh] overflow-hidden">
-      {/* 键盘快捷键提示 */}
-      <div className="w-full text-center pt-2 pb-4 text-gray-400 text-sm">
-        Use keyboard shortcuts: Hit(H), Stand(S), Double(D), Split(P), Surrender(R).
+      <div className="mb-6 text-center pt-6">
+        <h2 className="text-3xl font-bold text-green-400 mb-2">Practice</h2>
+        <p className="text-gray-400 text-sm md:text-base">
+          Use keyboard shortcuts: Hit(H), Stand(S), Double(D), Split(P), Surrender(R).
+        </p>
       </div>
 
       {/* 连胜计数 */}

@@ -208,8 +208,10 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
 
   if (gameState === SimState.Setup) {
     return (
-      <div className="flex flex-col items-center justify-center space-y-6 pt-10">
-        <h2 className="text-2xl font-bold">Simulation Setup</h2>
+    <div className="space-y-6">
+      <div className="mb-6 text-center pt-6">
+        <h2 className="text-3xl font-bold text-green-400 mb-2">Simulation Setup</h2>
+      </div>
         <div className="flex flex-col space-y-2">
           <label className="text-gray-400">Starting Bankroll</label>
           <input type="number" value={bankroll} onChange={e => setBankroll(parseInt(e.target.value))} className="bg-gray-800 p-2 rounded text-center text-xl font-mono" />
@@ -224,6 +226,11 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
 
   return (
     <div className="flex flex-col h-full relative">
+      <div className="mb-6 text-center w-full">
+        <h2 className="text-3xl font-bold text-green-400 mb-2">Simulation</h2>
+        <p className="text-gray-400 text-sm md:text-base"></p>
+      </div>
+
       {/* Top Info Bar */}
       <div className="flex justify-between items-center bg-gray-800 p-2 rounded mb-4 text-xs font-mono">
         <div>Bank: ${bankroll}</div>

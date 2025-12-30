@@ -15,10 +15,10 @@ const StrategyView: React.FC<StrategyViewProps> = ({ rules, navigate }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="mb-6 text-center">
+      <div className="mb-6 text-center pt-6">
         <h2 className="text-3xl font-bold text-green-400 mb-2">Basic Strategy</h2>
         <p className="text-gray-400 text-sm md:text-base">
-          Tap any cell to see the mathematical reasoning behind each action
+          Tap any cell to see the mathematical reasoning behind each action.
         </p>
       </div>
       <div className="overflow-auto flex-1">

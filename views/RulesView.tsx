@@ -43,7 +43,10 @@ const RulesView: React.FC<RulesViewProps> = ({ rules, setRules }) => {
   };
   return (
     <div className="space-y-6 max-w-md mx-auto">
-      <h2 className="text-2xl font-bold text-white mb-4">Table Rules</h2>
+      <div className="mb-6 text-center pt-6">
+        <h2 className="text-3xl font-bold text-green-400 mb-2">Rules Configuration</h2>
+        <p className="text-gray-400 text-sm md:text-base"></p>
+      </div>
       
       <div className="bg-gray-800 p-6 rounded-lg space-y-4 shadow-lg border border-gray-700">
         <RuleItemWithInfo
