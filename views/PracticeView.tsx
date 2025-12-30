@@ -40,6 +40,12 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
 
   // 🎮 动态计算允许的 action（根据实际手牌和规则）
   const allowedActions = React.useMemo(() => {
+    // 🎰 Blackjack 特殊情况：只能 Stand
+    const isBlackjack = playerHand.cards.length === 2 && calculateHandValue(playerHand.cards) === 21;
+    if (isBlackjack) {
+      return [Action.Stand];
+    }
+    
     const actions = [Action.Hit, Action.Stand, Action.Double];
     
     // 只有配对的初始手牌才能 Split
