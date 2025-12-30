@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GameRules, Action, Hand, Card as CardType, SimState, Rank } from '../types';
 import { createDeck, shuffleDeck, createHand, calculateHandValue, playDealerTurn } from '../services/blackjackLogic';
 import { recordSimRoundStats, resetSimCurrentWinStreak, updateSimMaxMultiplier } from '../services/statsService';
@@ -32,10 +32,10 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   const [bankroll, setBankroll] = useState(100);
   const [initialBankroll, setInitialBankroll] = useState<number | null>(null);
   const [peakBankroll, setPeakBankroll] = useState<number | null>(null);
-  const [currentBet, setCurrentBet] = useState(25);
   const [deck, setDeck] = useState<CardType[]>([]);
   const [roundStartBankroll, setRoundStartBankroll] = useState<number | null>(null);
   const [roundResult, setRoundResult] = useState<{ delta: number; total: number } | null>(null);
+  const [chipCounts, setChipCounts] = useState<Record<number, number>>({ 0.5: 0, 1: 0, 5: 0, 25: 1, 100: 0 });
   
   // Hands
   const [playerHands, setPlayerHands] = useState<Hand[]>([]);
@@ -50,6 +50,51 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   // Session persistence
   const SIM_STATE_KEY = 'bj_sim_state_v1';
 
+  const CHIP_DENOMS = useMemo(() => ([
+    { value: 0.5, label: '$0.50', color: 'bg-gradient-to-br from-sky-200 to-sky-400 text-slate-900' },
+    { value: 1, label: '$1', color: 'bg-gradient-to-br from-white to-gray-200 text-slate-900' },
+    { value: 5, label: '$5', color: 'bg-gradient-to-br from-red-500 to-red-600 text-white' },
+    { value: 25, label: '$25', color: 'bg-gradient-to-br from-green-500 to-green-600 text-white' },
+    { value: 100, label: '$100', color: 'bg-gradient-to-br from-black to-slate-900 text-yellow-200' },
+  ]), []);
+
+  const currentBet = useMemo(() => {
+    const sum = Object.entries(chipCounts).reduce((acc, [denom, count]) => acc + Number(denom) * count, 0);
+    return Math.round(sum * 100) / 100; // cents precision
+  }, [chipCounts]);
+
+  const canAfford = (addAmount: number) => currentBet + addAmount <= bankroll;
+
+  const adjustChips = (denom: number, delta: number) => {
+    if (delta > 0 && !canAfford(denom * delta)) return;
+    setChipCounts(prev => {
+      const next = { ...prev } as Record<number, number>;
+      const current = next[denom] || 0;
+      const updated = Math.max(0, current + delta);
+      next[denom] = updated;
+      return next;
+    });
+  };
+
+  const setPreset = (target: number, cap?: number) => {
+    const ceiling = cap ?? bankroll;
+    const amount = Math.max(0.5, Math.min(target, ceiling));
+    const next: Record<number, number> = { 0.5: 0, 1: 0, 5: 0, 25: 0, 100: 0 };
+    let remaining = Math.round(amount * 100); // cents
+    const order = [10000, 2500, 500, 100, 50];
+    order.forEach(cents => {
+      const denom = cents / 100;
+      const cnt = Math.floor(remaining / cents);
+      if (cnt > 0) {
+        next[denom] = cnt;
+        remaining -= cnt * cents;
+      }
+    });
+    setChipCounts(next);
+  };
+
+  const clearChips = () => setChipCounts({ 0.5: 0, 1: 0, 5: 0, 25: 0, 100: 0 });
+
   // 载入本地保存的牌桌状态
   useEffect(() => {
     try {
@@ -59,7 +104,11 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       if (parsed.bankroll) setBankroll(parsed.bankroll);
       if (parsed.initialBankroll !== undefined) setInitialBankroll(parsed.initialBankroll);
       if (parsed.peakBankroll !== undefined) setPeakBankroll(parsed.peakBankroll);
-      if (parsed.currentBet) setCurrentBet(parsed.currentBet);
+      if (parsed.currentBet && !parsed.chipCounts) {
+        // 兼容旧版：把旧的单值 currentBet 转成筹码（优先高额）
+        setPreset(parsed.currentBet, parsed.bankroll ?? bankroll);
+      }
+      if (parsed.chipCounts) setChipCounts(parsed.chipCounts);
       if (parsed.deck) setDeck(parsed.deck);
       if (parsed.playerHands) setPlayerHands(parsed.playerHands);
       if (parsed.activeHandIndex !== undefined) setActiveHandIndex(parsed.activeHandIndex);
@@ -81,7 +130,6 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       bankroll,
       initialBankroll,
       peakBankroll,
-      currentBet,
       deck,
       playerHands,
       activeHandIndex,
@@ -92,9 +140,10 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       roundStartBankroll,
       roundResult,
       roundsPlayed,
+      chipCounts,
     };
     localStorage.setItem(SIM_STATE_KEY, JSON.stringify(payload));
-  }, [bankroll, initialBankroll, peakBankroll, currentBet, deck, playerHands, activeHandIndex, dealerHand, gameState, hintsEnabled, hasUsedHints, roundStartBankroll, roundResult, roundsPlayed]);
+  }, [bankroll, initialBankroll, peakBankroll, chipCounts, deck, playerHands, activeHandIndex, dealerHand, gameState, hintsEnabled, hasUsedHints, roundStartBankroll, roundResult, roundsPlayed]);
 
   // 更新峰值
   useEffect(() => {
@@ -128,13 +177,13 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   };
 
   const placeBet = () => {
-    if (bankroll < currentBet) return;
+    if (bankroll < currentBet || currentBet <= 0) return;
     const preBetBankroll = bankroll;
     const allIn = preBetBankroll > 0 && currentBet >= preBetBankroll && preBetBankroll >= ALL_IN_THRESHOLD;
     roundFlagsRef.current = { hadBlackjack: false, didAllIn: allIn, splitUsed: false, das: false };
     setRoundStartBankroll(bankroll);
     setRoundResult(null);
-    setBankroll(prev => prev - currentBet);
+    setBankroll(prev => Math.round((prev - currentBet) * 100) / 100);
     setGameState(SimState.Dealing);
     
     // Deal logic
@@ -411,6 +460,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
     setInitialBankroll(null);
     setPeakBankroll(null);
     setRoundsPlayed(0);
+    clearChips();
     // 清理本地存档
     localStorage.removeItem(SIM_STATE_KEY);
   };
@@ -611,7 +661,7 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
           </div>
           <div className="text-2xl font-bold text-yellow-400 font-mono">
             ${gameState === SimState.Betting 
-              ? currentBet 
+              ? currentBet.toFixed(2)
               : playerHands.reduce((sum, h) => sum + h.bet, 0)}
           </div>
         </div>
@@ -641,70 +691,73 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       </div>
 
       {/* Dealer & Player 左右分布区域 */}
-      <div className="w-full flex gap-12 md:gap-16 px-8 py-6 mb-4">
-        {/* Dealer 区域 - 左侧 */}
-        <div className="flex-1 text-center">
-          {/* Title Row - 统一高度确保对齐 */}
-          <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">
-            Dealer {gameState !== SimState.Betting && dealerHand.cards.length > 0 && (
-              <span className="text-gray-400 ml-2">({formatHandValue(dealerHand.cards)})</span>
-            )}
-          </h3>
-          {/* Card Stage - 顶部对齐 */}
-          <div className="flex justify-center -space-x-10 min-h-[72px]">
-            {dealerHand.cards.length > 0 ? (
-              dealerHand.cards.map((c, i) => <Card key={i} card={c} />)
-            ) : (
-              <div className="h-16 w-12 border-2 border-dashed border-gray-700 rounded bg-gray-900/50"/>
-            )}
-          </div>
+      {playerHands.length === 0 && gameState === SimState.Betting ? (
+        <div className="w-full flex justify-center items-center py-8">
+          <div className="text-gray-500 italic text-center">Place your bet to start</div>
         </div>
+      ) : (
+        <div className="w-full flex gap-12 md:gap-16 px-8 py-6 mb-4">
+          {/* Dealer 区域 - 左侧 */}
+          <div className="flex-1 text-center">
+            {/* Title Row - 统一高度确保对齐 */}
+            <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">
+              {gameState !== SimState.Betting && dealerHand.cards.length > 0 && (
+                <span className="text-gray-400">Dealer ({formatHandValue(dealerHand.cards)})</span>
+              )}
+            </h3>
+            {/* Card Stage - 顶部对齐 */}
+            <div className="flex justify-center -space-x-10 min-h-[72px]">
+              {gameState === SimState.Betting ? null : dealerHand.cards.length > 0 ? (
+                dealerHand.cards.map((c, i) => <Card key={i} card={c} />)
+              ) : (
+                <div className="h-16 w-12 border-2 border-dashed border-gray-700 rounded bg-gray-900/50"/>
+              )}
+            </div>
+          </div>
 
-        {/* Player 区域 - 右侧 */}
-        <div className="flex-1 text-center">
-          {/* Title Row - 统一高度确保对齐，数字在标题中 */}
-          <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">
-            {playerHands.length === 0 ? 'Waiting' : 
-             playerHands.length === 1 ? `Your Hand (${formatHandValue(playerHands[0].cards)})` :
-             'Your Hands'}
-          </h3>
-          {/* Card Stage - 顶部对齐 */}
-          <div className="flex justify-center gap-8 overflow-x-auto">
-            {playerHands.map((h, idx) => (
-              <div 
-                key={idx} 
-                className={`flex flex-col items-center transition-all duration-300 ${
-                  idx === activeHandIndex 
-                    ? 'opacity-100' 
-                    : 'opacity-60'
-                }`}
-              >
-                {/* Hand Label - 只在多手牌时显示，包含点数 */}
-                {playerHands.length > 1 && (
-                  <div className="text-xs font-semibold text-gray-400 mb-2 px-2 py-1 bg-gray-800 rounded-full border border-gray-700">
-                    Hand {idx + 1} ({formatHandValue(h.cards)}) • <span className="text-yellow-400">${h.bet}</span>
+          {/* Player 区域 - 右侧 */}
+          <div className="flex-1 text-center">
+            {/* Title Row - 统一高度确保对齐，数字在标题中 */}
+            <h3 className="text-gray-400 text-sm tracking-widest uppercase mb-4 h-6 flex items-center justify-center">
+              {playerHands.length === 0 ? 'Waiting' : 
+              playerHands.length === 1 ? `Your Hand (${formatHandValue(playerHands[0].cards)})` :
+              'Your Hands'}
+            </h3>
+            {/* Card Stage - 顶部对齐 */}
+            <div className="flex justify-center gap-8 overflow-x-auto">
+              {playerHands.map((h, idx) => (
+                <div 
+                  key={idx} 
+                  className={`flex flex-col items-center transition-all duration-300 ${
+                    idx === activeHandIndex 
+                      ? 'opacity-100' 
+                      : 'opacity-60'
+                  }`}
+                >
+                  {/* Hand Label - 只在多手牌时显示，包含点数 */}
+                  {playerHands.length > 1 && (
+                    <div className="text-xs font-semibold text-gray-400 mb-2 px-2 py-1 bg-gray-800 rounded-full border border-gray-700">
+                      Hand {idx + 1} ({formatHandValue(h.cards)}) • <span className="text-yellow-400">${h.bet}</span>
+                    </div>
+                  )}
+                  
+                  {/* Cards */}
+                  <div className="flex -space-x-10 mb-2">
+                    {h.cards.map((c, i) => <Card key={i} card={c} />)}
                   </div>
-                )}
-                
-                {/* Cards */}
-                <div className="flex -space-x-10 mb-2">
-                  {h.cards.map((c, i) => <Card key={i} card={c} />)}
-                </div>
 
-                {/* Bust Indicator */}
-                {h.isBusted && (
-                  <span className="text-red-500 font-bold text-xs bg-red-950/50 px-2 py-1 rounded-full border border-red-800">
-                    BUST
-                  </span>
-                )}
-              </div>
-            ))}
-            {playerHands.length === 0 && (
-              <div className="text-gray-500 italic">Place your bet to start</div>
-            )}
+                  {/* Bust Indicator */}
+                  {h.isBusted && (
+                    <span className="text-red-500 font-bold text-xs bg-red-950/50 px-2 py-1 rounded-full border border-red-800">
+                      BUST
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Hint Overlay - Modern Design */}
       {hintsEnabled && hintAction && canPlay && (
@@ -720,35 +773,102 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
       <div className="pb-6">
         {gameState === SimState.Betting && (
           <div className="flex flex-col items-center gap-4">
-            {/* Chip Selection */}
-            <div className="flex justify-center gap-3 flex-wrap">
-              {[10, 25, 50, 100].map(amt => (
-                <button 
-                  key={amt} 
-                  onClick={() => setCurrentBet(amt)} 
-                  className={`relative w-20 h-20 rounded-full border-4 flex flex-col items-center justify-center font-bold transition-all duration-200 ${
-                    currentBet === amt 
-                      ? 'border-yellow-400 bg-gradient-to-br from-yellow-600 to-yellow-700 text-black shadow-lg shadow-yellow-500/50 scale-110' 
-                      : 'border-gray-600 bg-gradient-to-br from-gray-700 to-gray-800 text-gray-300 hover:border-yellow-500 hover:scale-105'
-                  }`}
+            {/* Chip Rail */}
+            <div className="w-full max-w-2xl bg-gray-900/60 border border-gray-800 rounded-2xl px-4 py-3 shadow-inner">
+              <div className="flex flex-wrap gap-3 justify-center">
+                {CHIP_DENOMS.map(chip => {
+                  const count = chipCounts[chip.value] || 0;
+                  const disabled = !canAfford(chip.value);
+                  return (
+                    <div key={chip.value} className="flex flex-col items-center gap-2">
+                      <button
+                        onClick={() => adjustChips(chip.value, 1)}
+                        onContextMenu={e => { e.preventDefault(); adjustChips(chip.value, -1); }}
+                        className={`relative w-16 h-16 rounded-full border-4 flex flex-col items-center justify-center font-bold shadow-md transition-all duration-200 ${chip.color} ${
+                          disabled ? 'opacity-40 cursor-not-allowed border-gray-600' : 'cursor-pointer hover:scale-105 border-yellow-300'
+                        }`}
+                        disabled={disabled}
+                        aria-label={`Add ${chip.label}`}
+                        title={disabled ? 'Insufficient funds' : 'Click to add, right-click to remove'}
+                      >
+                        <div className="text-xs opacity-80">{chip.label}</div>
+                        {count > 0 && (
+                          <span className="absolute -top-2 -right-2 min-w-[28px] px-2 py-0.5 text-xs rounded-full bg-gray-900 text-yellow-300 border border-gray-700 text-center">
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => adjustChips(chip.value, -1)}
+                          className="px-2 py-1 text-xs rounded bg-gray-800 text-gray-200 border border-gray-700 hover:border-yellow-300"
+                          disabled={count === 0}
+                        >
+                          −
+                        </button>
+                        <button
+                          onClick={() => adjustChips(chip.value, 1)}
+                          className="px-2 py-1 text-xs rounded bg-gray-800 text-gray-200 border border-gray-700 hover:border-green-300"
+                          disabled={disabled}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2 justify-center text-xs text-gray-300">
+                <button
+                  onClick={() => setPreset(0.5)}
+                  className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
                 >
-                  <div className="text-xs opacity-70">$</div>
-                  <div className="text-xl">{amt}</div>
+                  Min ($0.50)
                 </button>
-              ))}
+                <button
+                  onClick={() => setPreset(Math.max(0.5, currentBet / 2))}
+                  className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
+                >
+                  Half
+                </button>
+                <button
+                  onClick={() => setPreset(Math.max(0.5, currentBet * 2))}
+                  className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
+                >
+                  Double
+                </button>
+                <button
+                  onClick={() => setPreset(Math.max(0.5, bankroll / 2))}
+                  className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
+                >
+                  Half Bankroll
+                </button>
+                <button
+                  onClick={() => setPreset(bankroll)}
+                  className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-yellow-300"
+                >
+                  All-in
+                </button>
+                <button
+                  onClick={clearChips}
+                  className="px-3 py-1 rounded border border-gray-700 bg-gray-800 hover:border-red-400 text-red-200"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
 
             {/* Deal Button */}
             <button 
               onClick={placeBet} 
-              disabled={bankroll < currentBet}
+              disabled={bankroll < currentBet || currentBet <= 0}
               className={`w-full max-w-md px-8 py-4 rounded-xl font-bold text-lg shadow-xl transition-all duration-200 ${
-                bankroll < currentBet 
+                bankroll < currentBet || currentBet <= 0
                   ? 'bg-gray-700 cursor-not-allowed text-gray-500 border-2 border-gray-600' 
                   : 'bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white border-2 border-green-500 hover:shadow-green-500/50'
               }`}
             >
-              {bankroll < currentBet ? 'Insufficient Funds' : 'DEAL CARDS'}
+              {bankroll < currentBet || currentBet <= 0 ? 'Adjust Bet' : 'DEAL CARDS'}
             </button>
 
             {/* Leave Table */}
