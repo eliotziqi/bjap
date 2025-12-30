@@ -8,34 +8,96 @@ interface ActionControlsProps {
 }
 
 const ActionControls: React.FC<ActionControlsProps> = ({ onAction, allowedActions, disabled }) => {
-  const getButtonColor = (action: Action) => {
-    switch(action) {
-      case Action.Hit: return 'bg-green-600 hover:bg-green-700';
-      case Action.Stand: return 'bg-red-600 hover:bg-red-700';
-      case Action.Double: return 'bg-yellow-600 hover:bg-yellow-700';
-      case Action.Split: return 'bg-blue-600 hover:bg-blue-700';
-      case Action.Surrender: return 'bg-gray-500 hover:bg-gray-600';
-      default: return 'bg-gray-600';
-    }
+  const getButtonColor = (action: Action, isAllowed: boolean) => {
+    const baseColor = (() => {
+      switch(action) {
+        case Action.Hit: return 'bg-green-600';
+        case Action.Stand: return 'bg-red-600';
+        case Action.Double: return 'bg-yellow-600';
+        case Action.Split: return 'bg-blue-600';
+        case Action.Surrender: return 'bg-gray-500';
+        default: return 'bg-gray-600';
+      }
+    })();
+    
+    const hoverColor = (() => {
+      switch(action) {
+        case Action.Hit: return 'hover:bg-green-700';
+        case Action.Stand: return 'hover:bg-red-700';
+        case Action.Double: return 'hover:bg-yellow-700';
+        case Action.Split: return 'hover:bg-blue-700';
+        case Action.Surrender: return 'hover:bg-gray-600';
+        default: return 'hover:bg-gray-700';
+      }
+    })();
+    
+    // 如果不可用，不显示 hover 效果
+    return isAllowed ? `${baseColor} ${hoverColor}` : baseColor;
   };
 
-  return (
-    <div className={`flex flex-wrap gap-2 justify-center w-full max-w-md mx-auto p-4 ${disabled ? 'pointer-events-none' : ''}`}>
-      {Object.values(Action).map((action) => {
-        const isAllowed = allowedActions.includes(action);
-        if (!isAllowed) return null; // Or render disabled state based on preference
+  const isActionAllowed = (action: Action) => allowedActions.includes(action);
 
-        return (
-          <button
-            key={action}
-            onClick={() => onAction(action)}
-            disabled={disabled}
-            className={`${getButtonColor(action)} text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex-1 min-w-[80px]`}
-          >
-            {action}
-          </button>
-        );
-      })}
+  // 主操作：Hit & Stand
+  const primaryActions = [Action.Hit, Action.Stand];
+  
+  // 次要操作：Double, Split, Surrender
+  const secondaryActions = [Action.Double, Action.Split, Action.Surrender];
+
+  return (
+    <div className={`w-full max-w-md mx-auto p-4 space-y-2 ${disabled ? 'pointer-events-none' : ''}`}>
+      {/* 第一排：主操作（Hit & Stand） */}
+      <div className="flex gap-2">
+        {primaryActions.map((action) => {
+          const isAllowed = isActionAllowed(action);
+          const isDisabled = disabled || !isAllowed;
+          
+          return (
+            <button
+              key={action}
+              onClick={() => !isDisabled && onAction(action)}
+              disabled={isDisabled}
+              className={`
+                ${getButtonColor(action, isAllowed)}
+                text-white font-bold py-4 px-6 rounded-lg shadow-lg 
+                flex items-center justify-center
+                w-1/2
+                transform transition 
+                ${!isDisabled ? 'active:scale-95' : ''}
+                ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''}
+              `}
+            >
+              {action}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 第二排：次要操作（Double, Split, Surrender） */}
+      <div className="flex gap-2">
+        {secondaryActions.map((action) => {
+          const isAllowed = isActionAllowed(action);
+          const isDisabled = disabled || !isAllowed;
+          
+          return (
+            <button
+              key={action}
+              onClick={() => !isDisabled && onAction(action)}
+              disabled={isDisabled}
+              className={`
+                ${getButtonColor(action, isAllowed)}
+                text-white font-bold py-3 px-4 rounded-lg shadow-lg 
+                flex items-center justify-center
+                flex-1
+                transform transition 
+                ${!isDisabled ? 'active:scale-95' : ''}
+                ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''}
+              `}
+            >
+              {action}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };
