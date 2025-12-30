@@ -65,6 +65,31 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
     dealNewHand();
   }, []);
 
+  // ⌨️ 键盘快捷键支持
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (isBusy) return;
+      
+      const key = e.key.toUpperCase();
+      const keyMap: Record<string, Action> = {
+        'H': Action.Hit,
+        'S': Action.Stand,
+        'D': Action.Double,
+        'P': Action.Split,
+        'R': Action.Surrender,
+      };
+      
+      const action = keyMap[key];
+      if (action) {
+        e.preventDefault();
+        handleAction(action);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isBusy, playerHand, dealerUpCard]);
+
   const handleAction = (action: Action) => {
     // 🚪 防止重复触发
     if (isBusy) return;
@@ -92,6 +117,11 @@ const PracticeView: React.FC<PracticeViewProps> = ({ globalRules, stats }) => {
 
   return (
     <div className="flex flex-col items-center justify-between min-h-[60vh]">
+      {/* 键盘快捷键提示 */}
+      <div className="w-full text-center pt-2 pb-4 text-gray-400 text-sm">
+        Use keyboard shortcuts: Hit(H), Stand(S), Double(D), Split(P), Surrender(R).
+      </div>
+
       {feedback && (
           <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm pointer-events-none`}>
               <div className={`text-6xl font-black ${feedback.correct ? 'text-green-500' : 'text-red-500'} drop-shadow-lg transform scale-110`}>
