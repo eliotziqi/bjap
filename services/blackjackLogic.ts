@@ -56,7 +56,11 @@ export const isSoftHand = (cards: Card[]): boolean => {
     value += card.value;
     if (card.rank === Rank.Ace) aces += 1;
   }
-  return aces > 0 && value <= 21 && (value + 10 > 21 ? false : true); 
+  // Soft hand: has an Ace that is being counted as 11
+  // This means: value > 11 (at least one Ace as 11) but value <= 21 (not busted)
+  // AND the minimum value (counting all Aces as 1) is less than the current value
+  const minValue = value - (aces * 10);
+  return aces > 0 && value <= 21 && minValue < value;
 };
 
 export const getHandType = (cards: Card[]): 'HARD' | 'SOFT' | 'PAIR' => {
@@ -120,6 +124,11 @@ export const playDealerTurn = (deck: Card[], dealerHand: Hand, rules: GameRules)
 
     // Stand on 17 (Hard or S17) or > 17
     break;
+  }
+
+  // Mark as busted if over 21
+  if (val > 21) {
+    newHand.isBusted = true;
   }
 
   return { updatedDeck: currentDeck, finalHand: newHand };

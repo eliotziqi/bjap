@@ -1,4 +1,4 @@
-# Blackjack Trainer Pro
+# Blackjack Trainer
 
 一个专注于 21 点基本策略训练的 Web 应用，帮助用户通过系统化练习掌握最优决策。
 
