@@ -26,6 +26,23 @@ const SimulationView: React.FC<SimulationViewProps> = ({ globalRules }) => {
   const [pressedAction, setPressedAction] = useState<Action | null>(null);
   const [roundsPlayed, setRoundsPlayed] = useState(0);
 
+  // Restore state from localStorage on mount
+  useEffect(() => {
+    const SIM_STATE_KEY = 'bj_sim_state_v1';
+    try {
+      const saved = localStorage.getItem(SIM_STATE_KEY);
+      if (saved) {
+        const savedState = JSON.parse(saved);
+        game.restoreState(savedState);
+        setChipCounts(savedState.chipCounts ?? { 0.5: 0, 1: 0, 5: 2, 25: 0, 100: 0 });
+        setHintsEnabled(savedState.hintsEnabled ?? false);
+        setRoundsPlayed(savedState.roundsPlayed ?? 0);
+      }
+    } catch (e) {
+      console.error('Failed to restore simulation state:', e);
+    }
+  }, []);
+
   // Hint system
   const { hintAction, hasUsedHints } = useHintSystem(
     game.gameState,

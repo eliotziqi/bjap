@@ -316,12 +316,18 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     });
 
     console.log('Total payout:', payout);
-    console.log('======================');
 
     setBankroll((b) => {
+      const totalBet = hands.reduce((sum, h) => sum + h.bet, 0);
+      const inferredStart = b + totalBet;
+      // If persisted roundStartBankroll looks inconsistent (e.g., from a stale restore),
+      // fall back to the inferred value from current bankroll + totalBet.
+      const start = roundStartBankroll;
+      const startSafe = start !== null && Math.abs(start - inferredStart) < 0.01 ? start : inferredStart;
       const newBank = b + payout;
-      const start = roundStartBankroll ?? (initialBankroll ?? b);
-      const delta = newBank - start;
+      console.log('Bankroll settle -> b:', b, 'payout:', payout, 'totalBet:', totalBet, 'startUsed:', startSafe, 'startPersisted:', start, 'inferredStart:', inferredStart, 'newBank:', newBank);
+      console.log('======================');
+      const delta = newBank - startSafe;
       const peak = peakBankroll ?? newBank;
       const drawdown = peak > 0 ? Math.max(0, (peak - newBank) / peak) : 0;
       const achievements: string[] = [];
@@ -337,7 +343,6 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     setTimeout(() => {
       setPlayerHands([]);
       setDealerHand(createHand());
-      setRoundStartBankroll(null);
       setGameState(SimState.Betting);
     }, 2500);
   };
@@ -348,7 +353,24 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     setActiveHandIndex(0);
     setDealerHand(createHand(null));
     setRoundResult(null);
-    setRoundStartBankroll(null);
+  };
+
+  const restoreState = (savedState: any) => {
+    if (!savedState) return;
+    try {
+      setGameState(savedState.gameState ?? SimState.Setup);
+      setBankroll(savedState.bankroll ?? 100);
+      setInitialBankroll(savedState.initialBankroll ?? null);
+      setPeakBankroll(savedState.peakBankroll ?? null);
+      setDeck(savedState.deck ?? []);
+      setPlayerHands(savedState.playerHands ?? []);
+      setActiveHandIndex(savedState.activeHandIndex ?? 0);
+      setDealerHand(savedState.dealerHand ?? createHand());
+      setRoundStartBankroll(savedState.roundStartBankroll ?? null);
+      setRoundResult(savedState.roundResult ?? null);
+    } catch (e) {
+      console.error('Failed to restore sim state:', e);
+    }
   };
 
   return {
@@ -385,5 +407,6 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     setRoundStartBankroll,
     setRoundResult,
     resetGame,
+    restoreState,
   };
 };

@@ -29,9 +29,25 @@ const DEFAULT_RULES: GameRules = {
 // --- App Component ---
 const App: React.FC = () => {
   const [view, setView] = useState<ViewMode>(ViewMode.Rules);
-  const [rules, setRules] = useState<GameRules>(DEFAULT_RULES);
+  const [rules, setRules] = useState<GameRules>(() => {
+    // Try to restore rules from localStorage
+    try {
+      const saved = localStorage.getItem('bj_rules_v1');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to load rules from localStorage:', e);
+    }
+    return DEFAULT_RULES;
+  });
   const [stats, setStats] = useState(loadStats());
   
+  // Save rules to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('bj_rules_v1', JSON.stringify(rules));
+  }, [rules]);
+
   // Navigation Handler
   const navigate = (newView: ViewMode) => {
     setView(newView);
@@ -101,7 +117,11 @@ const App: React.FC = () => {
           <SimulationView globalRules={rules} />
         )}
         {view === ViewMode.Stats && (
-          <StatsView stats={stats} onReset={() => { clearStats(); setStats(loadStats()); }} />
+          <StatsView stats={stats} onReset={() => { 
+            clearStats(); 
+            setStats(loadStats()); 
+            localStorage.removeItem('bj_sim_state_v1');
+          }} />
         )}
       </main>
 
