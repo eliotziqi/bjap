@@ -97,7 +97,8 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     console.log(`\n========== ROUND ${roundNumber} START ==========`);
     if (bankroll < currentBet) return;
     const preBetBankroll = bankroll;
-    const allIn = preBetBankroll > 0 && currentBet >= preBetBankroll && preBetBankroll >= allInThreshold;
+    const baseAmount = initialBankroll ?? 100;
+    const allIn = currentBet >= baseAmount * 2 && currentBet >= preBetBankroll;
     roundFlagsRef.current = { hadBlackjack: false, didAllIn: allIn, splitUsed: false, das: false };
     setRoundStartBankroll(bankroll);
     setRoundResult(null);
@@ -453,9 +454,15 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
       
       const peak = peakBankroll ?? newBank;
       const drawdown = peak > 0 ? Math.max(0, (peak - newBank) / peak) : 0;
+      
+      // 重新计算 All-In：检查总下注是否达到阈值且用光了初始资金
+      const totalBetThisRound = hands.reduce((sum, h) => sum + h.bet, 0);
+      const baseAmount = initialBankroll ?? 100;
+      const finalDidAllIn = totalBetThisRound >= baseAmount * 2 && roundStartBankroll === totalBetThisRound;
+      
       const achievements: string[] = [];
       if (roundFlagsRef.current.hadBlackjack) achievements.push('Blackjack');
-      if (roundFlagsRef.current.didAllIn) achievements.push(`All-In (>=${allInThreshold})`);
+      if (finalDidAllIn) achievements.push('All-In');
       if (roundFlagsRef.current.das) achievements.push('DAS');
       achievements.forEach((a) => sessionAchievementsRef.current.add(a));
       pendingSimStatsRef.current = { delta, drawdown, achievements };

@@ -7,6 +7,7 @@ interface LeaveSummary {
   usedHints: boolean;
   hasPlayed: boolean;
   rounds: number;
+  newAchievements: string[];
 }
 
 interface SessionSummaryModalProps {
@@ -45,7 +46,19 @@ const SessionSummaryModal: React.FC<SessionSummaryModalProps> = ({ leaveSummary,
             Rounds played: {leaveSummary.rounds}
           </div>
         )}
-        {leaveSummary.achievements > 0 && (
+        {leaveSummary.newAchievements.length > 0 && (
+          <div className="bg-amber-900/30 border border-amber-600/50 rounded-lg p-3 space-y-2">
+            <div className="text-yellow-300 font-semibold text-sm">🎉 New Achievement Unlocked!</div>
+            <div className="space-y-1">
+              {leaveSummary.newAchievements.map((ach) => (
+                <div key={ach} className="text-yellow-200 text-sm font-medium">
+                  ✓ {ach}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {leaveSummary.achievements > 0 && leaveSummary.newAchievements.length === 0 && (
           <div className="text-yellow-300 font-semibold">
             ({leaveSummary.achievements} more achievement{leaveSummary.achievements > 1 ? 's' : ''} gained!)
           </div>

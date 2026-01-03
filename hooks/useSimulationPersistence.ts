@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { recordSimRoundStats, resetSimCurrentWinStreak, updateSimMaxMultiplier } from '../services/statsService';
+import { recordSimRoundStats, resetSimCurrentWinStreak, updateSimMaxMultiplier, loadStats } from '../services/statsService';
 
 interface SimulationState {
   bankroll: number;
@@ -28,6 +28,7 @@ interface LeaveSummary {
   usedHints: boolean;
   hasPlayed: boolean;
   rounds: number;
+  newAchievements: string[];
 }
 
 export const useSimulationPersistence = (
@@ -90,6 +91,13 @@ export const useSimulationPersistence = (
     const multiplier = base > 0 ? totalValue / base : 1;
     const delta = totalValue - base;
     const achievementsCount = hasUsedHints ? 0 : sessionAchievementsRef.current.size;
+    
+    // 计算本次 Session 中获得的新成就
+    const currentStats = loadStats();
+    const existingAchievements = new Set(currentStats.simAchievements || []);
+    const newAchievements = Array.from(sessionAchievementsRef.current).filter(
+      (ach) => !existingAchievements.has(ach)
+    );
 
     return {
       delta,
@@ -98,6 +106,7 @@ export const useSimulationPersistence = (
       achievements: achievementsCount,
       usedHints: hasUsedHints,
       hasPlayed,
+      newAchievements: hasUsedHints ? [] : newAchievements,
     };
   };
 
