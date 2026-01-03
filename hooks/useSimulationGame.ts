@@ -337,6 +337,7 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     setTimeout(() => {
       setPlayerHands([]);
       setDealerHand(createHand());
+      setRoundStartBankroll(null);
       setGameState(SimState.Betting);
     }, 2500);
   };
@@ -347,6 +348,7 @@ export const useSimulationGame = (rules: GameRules, allInThreshold: number) => {
     setActiveHandIndex(0);
     setDealerHand(createHand(null));
     setRoundResult(null);
+    setRoundStartBankroll(null);
   };
 
   return {
