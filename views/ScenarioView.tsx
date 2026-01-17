@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameRules, Action, Hand, Card as CardType, Rank, Suit, HandType, ViewMode } from '../types';
-import { createHand, calculateHandValue, isSoftHand } from '../services/blackjackLogic';
-import { getBasicStrategyAction, getStrategyExplanation } from '../services/strategyEngine';
-import { calculateAllActionEVs, EVResult } from '../services/evCalculator';
+import { createHand, calculateHandValue, countUsableAces } from '../services/blackjackLogic';
+import { getBestActionFromEV, EVResult } from '../services/evCalculator';
 import Card from '../components/Card';
 
 interface ScenarioViewProps {
@@ -21,6 +20,56 @@ const ScenarioView: React.FC<ScenarioViewProps> = ({ globalRules, navigate }) =>
   const [displayHand, setDisplayHand] = useState<Hand | null>(null);
   const [evResults, setEvResults] = useState<EVResult[]>([]);
   const [showEvTable, setShowEvTable] = useState(false);
+
+  // Generate explanation based on EV results and game context
+  // Structure is TC-aware ready: currently uses TC=0 baseline
+  const generateExplanation = (
+    bestAction: Action,
+    allActions: EVResult[],
+    playerTotal: number,
+    usableAces: number,
+    isPair: boolean,
+    dealerVal: number,
+    trueCount: number = 0 // Reserved for future TC adjustments
+  ): string => {
+    const bestEV = allActions[0]?.ev || 0;
+    const secondBest = allActions[1];
+    const isSoft = usableAces > 0;
+    
+    // Base explanation at current TC
+    let explanation = '';
+    
+    // Construct primary reasoning
+    if (bestAction === Action.Stand) {
+      if (playerTotal >= 17) {
+        explanation = `Standing on ${isSoft ? 'soft' : 'hard'} ${playerTotal} maximizes EV (${bestEV.toFixed(4)}). The risk of busting on a hit outweighs potential gains against dealer ${dealerVal}.`;
+      } else {
+        explanation = `Standing on ${playerTotal} is optimal here (EV: ${bestEV.toFixed(4)}). The dealer's weak upcard (${dealerVal}) has a high bust probability, making standing more valuable than hitting.`;
+      }
+    } else if (bestAction === Action.Hit) {
+      explanation = `Hitting improves your expected value (EV: ${bestEV.toFixed(4)}). Your current total of ${playerTotal} is too weak to stand against dealer ${dealerVal}.`;
+    } else if (bestAction === Action.Double) {
+      explanation = `Doubling down maximizes EV (${bestEV.toFixed(4)}) by leveraging favorable odds. Your ${isSoft ? 'soft' : 'hard'} ${playerTotal} against dealer ${dealerVal} presents a strong opportunity to increase your bet.`;
+    } else if (bestAction === Action.Split) {
+      explanation = `Splitting pairs is optimal (EV: ${bestEV.toFixed(4)}). Playing two separate hands from this position yields better long-term returns than playing them together against dealer ${dealerVal}.`;
+    } else if (bestAction === Action.Surrender) {
+      explanation = `Surrendering minimizes loss (EV: -0.5000). Your ${playerTotal} against dealer ${dealerVal} has such poor odds that giving up half your bet is better than playing the hand.`;
+    }
+    
+    // Add comparative insight if second-best is close
+    if (secondBest && Math.abs(bestEV - secondBest.ev) < 0.05) {
+      explanation += ` Note: ${secondBest.action} (EV: ${secondBest.ev.toFixed(4)}) is nearly equivalent—this is a marginal decision.`;
+    }
+    
+    // Future TC deviation structure (placeholder for later enhancement)
+    // When TC adjustments are implemented, add conditional notes like:
+    // if (trueCount !== 0) {
+    //   explanation += ` At TC=${trueCount}, composition effects shift the optimal play.`;
+    // }
+    // Add approximate boundary hints: "At higher counts (TC > ~+3), consider switching to X"
+    
+    return explanation;
+  };
 
   // 格式化点数显示（与PracticeView保持一致）
   const formatHandValue = (cards: CardType[]): string => {
@@ -87,25 +136,35 @@ const ScenarioView: React.FC<ScenarioViewProps> = ({ globalRules, navigate }) =>
       
       setDisplayHand(playerHand);
       
-      const action = getBasicStrategyAction(playerHand, dealerCard, rules);
-      setOptimalAction(action);
-      
-      const reason = getStrategyExplanation(playerHand, dealerCard, rules, action);
-      setExplanation(reason);
-
-      // Calculate EV
+      // Use EV-based optimal action (single source of truth)
       const isPair = parsed.type === HandType.Pair;
       const total = calculateHandValue(playerHand.cards);
-      const isSoft = isSoftHand(playerHand.cards);
-      const evs = calculateAllActionEVs(
+      const usableAces = countUsableAces(playerHand.cards);
+      const pairRank = isPair ? playerHand.cards[0].rank : null;
+      
+      const { bestAction, allActions } = getBestActionFromEV(
         total,
-        isSoft,
+        usableAces,
         isPair,
-        isPair ? playerHand.cards[0].rank : null,
+        pairRank,
         parsed.dVal,
-        rules
+        rules,
+        0 // TC = 0 baseline
       );
-      setEvResults(evs);
+      
+      setOptimalAction(bestAction);
+      setEvResults(allActions);
+      
+      const explanation = generateExplanation(
+        bestAction,
+        allActions,
+        total,
+        usableAces,
+        isPair,
+        parsed.dVal,
+        0 // TC = 0 baseline
+      );
+      setExplanation(explanation);
     }
   }, []);
 

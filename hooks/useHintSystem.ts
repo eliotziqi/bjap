@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Action, Hand, SimState } from '../types';
 import { GameRules } from '../types';
-import { calculateHandValue } from '../services/blackjackLogic';
+import { calculateHandValue, countUsableAces } from '../services/blackjackLogic';
 import { calculateAllActionEVs, EVResult } from '../services/evCalculator';
 
 export const useHintSystem = (
@@ -30,13 +30,13 @@ export const useHintSystem = (
 
       // Calculate all action EVs
       const playerTotal = calculateHandValue(currentHand.cards);
-      const isSoft = currentHand.cards.some(c => c.rank === 'A') && playerTotal < 21;
+      const usableAces = countUsableAces(currentHand.cards);
       const isPair = currentHand.cards.length === 2 && currentHand.cards[0].rank === currentHand.cards[1].rank;
       const pairRank = isPair ? currentHand.cards[0].rank : null;
       const dealerUpVal = dealerUp.value === 10 ? 10 : (dealerUp.rank === 'A' ? 11 : dealerUp.value);
 
       try {
-        let allEVs = calculateAllActionEVs(playerTotal, isSoft, isPair, pairRank, dealerUpVal, rules);
+        let allEVs = calculateAllActionEVs(playerTotal, usableAces, isPair, pairRank, dealerUpVal, rules);
         const allowedActions = getAllowedActions();
 
         // Filter to only allowed actions

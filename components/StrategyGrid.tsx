@@ -1,7 +1,7 @@
 import React from 'react';
 import { Action, GameRules, HandType, Rank, Card, Suit } from '../types';
-import { getBasicStrategyAction } from '../services/strategyEngine';
-import { createHand } from '../services/blackjackLogic';
+import { getBestActionFromEV } from '../services/evCalculator';
+import { createHand, calculateHandValue, countUsableAces } from '../services/blackjackLogic';
 
 interface StrategyGridProps {
   rules: GameRules;
@@ -76,8 +76,22 @@ const StrategyGrid: React.FC<StrategyGridProps> = ({ rules, onCellClick }) => {
                   ];
                 }
                 
-                const dummyDealer = { rank: dVal === 11 ? Rank.Ace : Rank.Two, suit: Suit.Clubs, value: dVal };
-                const action = getBasicStrategyAction(dummyHand, dummyDealer, rules);
+                // Use EV calculation to determine optimal action
+                const total = calculateHandValue(dummyHand.cards);
+                const usableAces = countUsableAces(dummyHand.cards);
+                const isPair = row.isPair || false;
+                const pairRank = isPair ? (row.label as Rank) : null;
+                
+                const { bestAction } = getBestActionFromEV(
+                  total,
+                  usableAces,
+                  isPair,
+                  pairRank,
+                  dVal,
+                  rules,
+                  0 // TC = 0 baseline
+                );
+                const action = bestAction;
 
                 return (
                   <div

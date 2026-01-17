@@ -63,6 +63,46 @@ export const isSoftHand = (cards: Card[]): boolean => {
   return aces > 0 && value <= 21 && minValue < value;
 };
 
+/**
+ * Count the number of Aces currently being counted as 11 (usable Aces).
+ * 
+ * 核心不变式：
+ * - total = 已经把必要的Ace从11降到1之后的最佳不爆点数
+ * - usableAces = 当前仍按11计的Ace数量
+ * - isSoft === (usableAces > 0)
+ * 
+ * 用例验证：
+ * A,2 → total=13, usableAces=1 → Soft 13 ✓
+ * A,A → total=12, usableAces=1 → Soft 12 ✓
+ * A,A,2 → total=14, usableAces=1 → Soft 14 ✓
+ * A,A,9 → total=21, usableAces=1 → Soft 21 ✓
+ * A,A,9,9 → total=20, usableAces=0 → Hard 20 ✓
+ */
+export const countUsableAces = (cards: Card[]): number => {
+  let total = 0;
+  let aceCount = 0;
+
+  // 步骤1：所有Ace按11计，其他牌按正常价值计
+  for (const card of cards) {
+    if (card.isHidden) continue;
+    if (card.rank === Rank.Ace) {
+      total += 11;
+      aceCount += 1;
+    } else {
+      total += card.value;
+    }
+  }
+
+  // 步骤2：当 total > 21 时，逐个将Ace从11转为1，直到 total <= 21
+  let usableAces = aceCount;
+  while (total > 21 && usableAces > 0) {
+    total -= 10;      // 将一个Ace从11降到1
+    usableAces -= 1;
+  }
+
+  return usableAces;
+};
+
 export const getHandType = (cards: Card[]): 'HARD' | 'SOFT' | 'PAIR' => {
   if (cards.length === 2 && cards[0].rank === cards[1].rank) return 'PAIR';
   
